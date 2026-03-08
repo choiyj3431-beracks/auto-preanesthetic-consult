@@ -1,0 +1,19 @@
+# Android
+.gradle/
+build/
+local.properties
+*.apk
+*.aab
+*.keystore
+
+# IDE
+.idea/
+*.iml
+
+# Vercel
+.vercel/
+public/
+
+# OS
+.DS_Store
+Thumbs.db

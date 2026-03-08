@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>마취전 위험도 평가 시스템</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+html,body,#wrap{height:100%;overflow:hidden;background:#0B1120;font-family:'DM Sans','Malgun Gothic','Apple SD Gothic Neo',sans-serif;color:#E8F0FE;font-size:13px}
+:root{--bg:#0B1120;--card:#131D2E;--b:#1E2D45;--a:#00C896;--ad:#00C89615;--t:#E8F0FE;--m:#7A90B0;--danger:#FF5C5C;--warn:#FFB547;--info:#4FC3F7}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.fi{animation:fi .2s ease}
+input:focus,select:focus,textarea:focus{border-color:var(--a)!important}
+input,select,textarea,button{outline:none;font-family:inherit}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:var(--b);border-radius:3px}
+
+/* ── LAYOUT ── */
+#wrap{display:flex;flex-direction:column}
+.hdr{background:linear-gradient(135deg,#0B1120,#0E2035);border-bottom:1px solid var(--b);padding:10px 18px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;-webkit-app-region:drag}
+.hdr button{-webkit-app-region:no-drag}
+.hdr-l{display:flex;align-items:center;gap:10px}
+.hdr-icon{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,var(--a),#007A5E);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.body{display:flex;flex:1;overflow:hidden}
+
+/* LEFT */
+.left{width:400px;flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid var(--b)}
+.tabs{display:flex;background:var(--card);border-bottom:1px solid var(--b);flex-shrink:0}
+.tab{flex:1;background:none;border:none;cursor:pointer;padding:8px 2px 9px;display:flex;flex-direction:column;align-items:center;position:relative;gap:2px}
+.tab span{font-size:9px;font-weight:500;color:var(--m);white-space:nowrap;transition:color .2s}
+.tab.on span{color:var(--a);font-weight:800}
+.tab.done span{color:rgba(0,200,150,.55)}
+.tl{position:absolute;bottom:0;left:3px;right:3px;height:2px;border-radius:2px 2px 0 0;background:transparent;transition:all .25s}
+.tab.on .tl{background:var(--a)}
+.tab.done .tl{background:rgba(0,200,150,.25)}
+.tdot{position:absolute;top:3px;right:calc(50% - 10px);width:5px;height:5px;border-radius:50%;background:var(--a);opacity:.8}
+.content{flex:1;overflow-y:auto;padding:12px}
+
+/* RIGHT */
+.right{flex:1;display:flex;flex-direction:column;background:#080D18}
+.rh{padding:12px 18px;border-bottom:1px solid var(--b);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.rb{flex:1;overflow-y:auto;padding:14px 18px}
+
+/* COMPONENTS */
+.card{background:var(--card);border:1px solid var(--b);border-radius:13px;padding:13px;margin-bottom:9px}
+.ct{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--a);margin-bottom:9px}
+.lbl{font-size:11px;color:var(--m);display:block;margin-bottom:4px}
+.inp{width:100%;background:#0B1120;border:1px solid var(--b);border-radius:8px;padding:8px 11px;color:var(--t);font-size:13px;transition:border-color .2s}
+textarea.inp{resize:vertical;line-height:1.6;font-size:12px}
+select.inp{appearance:none;cursor:pointer;padding-right:28px}
+.sw{position:relative}.sw::after{content:'▾';position:absolute;right:9px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--m);font-size:10px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mb8{margin-bottom:8px}
+.ci{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:8px;border:1px solid var(--b);cursor:pointer;margin-bottom:4px;transition:all .18s}
+.ci.on{border-color:var(--a);background:var(--ad)}
+.cb{width:16px;height:16px;border-radius:4px;flex-shrink:0;margin-top:1px;border:2px solid var(--b);display:flex;align-items:center;justify-content:center;transition:all .18s}
+.ci.on .cb{border-color:var(--a);background:var(--a)}
+.cl{font-size:12px;color:var(--t);line-height:1.35}
+.cs{font-size:10px;color:var(--m);margin-top:1px}
+.bdg{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.btn{padding:10px 16px;border-radius:11px;font-size:13px;font-weight:700;border:none;transition:all .2s;cursor:pointer}
+.bp{background:linear-gradient(135deg,var(--a),#00A87C);color:#0B1120}
+.bo{background:transparent;border:1px solid var(--b)!important;color:var(--m)}
+.bs{background:#1E2D45;color:var(--t)}
+.bsm{padding:5px 11px;font-size:11px;border-radius:7px}
+.brow{display:flex;gap:8px;margin-top:4px}
+.rscore{font-size:30px;font-weight:800;letter-spacing:-1px;line-height:1}
+.cbox{background:#080D18;border:1px solid var(--b);border-radius:10px;padding:13px;font-size:12px;line-height:1.9;color:var(--t);white-space:pre-wrap;font-family:'DM Mono','Courier New',monospace;max-height:520px;overflow-y:auto}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center}
+.mod{background:var(--card);border:1px solid var(--b);border-radius:15px;padding:22px;width:440px;max-height:80vh;overflow-y:auto}
+.mod h3{font-size:14px;font-weight:700;margin-bottom:14px}
+.mf{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+.warn-box{padding:9px 11px;border-radius:8px;background:rgba(255,181,71,.08);border:1px solid rgba(255,181,71,.3);font-size:11px;color:var(--warn);line-height:1.5;margin-bottom:12px}
+.spin{width:42px;height:42px;border:3px solid var(--b);border-top:3px solid var(--a);border-radius:50%;animation:spin .8s linear infinite}
+
+/* Android 모바일 */
+@media (max-width: 700px) {
+  .body { flex-direction: column !important; }
+  .left { width: 100% !important; min-width: unset !important; border-right: none !important; overflow-y: auto; }
+  .right { display: none !important; }
+}
+input, select, textarea { font-size: 16px !important; }
+
+</style>
+
+<script>
+const isAndroid = typeof window.AndroidBridge !== 'undefined';
+const isElectron = typeof window.electronAPI !== 'undefined';
+const isWeb = !isAndroid && !isElectron;
+const AppStorage = {
+  save(v) { try { if(isAndroid) AndroidBridge.saveConfig(JSON.stringify(v)); else localStorage.setItem('cfg',JSON.stringify(v)); } catch(e){} },
+  load()  { try { const r=isAndroid?AndroidBridge.loadConfig():localStorage.getItem('cfg'); return r?JSON.parse(r):null; } catch(e){return null;} }
+};
+async function nativeCopy(t) { if(isAndroid){AndroidBridge.copyToClipboard(t);return;} try{await navigator.clipboard.writeText(t);}catch(e){} }
+async function nativeSave(c,n) {
+  if(isAndroid){AndroidBridge.saveFile(c,n||'환자');return;}
+  if(isElectron){await window.electronAPI.saveConsult({content:c,patientName:n});return;}
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([c],{type:'text/plain;charset=utf-8'}));a.download=`마취협진_${n||'환자'}.txt`;a.click();
+}
+function nativeAlert(m){if(isAndroid)AndroidBridge.showToast(m);else alert(m);}
+</script>
+
+</head>
+<body>
+<div id="wrap">
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-l">
+    <div class="hdr-icon">🏥</div>
+    <div>
+      <div style="font-size:15px;font-weight:700;color:#fff;letter-spacing:-.3px">마취전 위험도 평가 시스템</div>
+      <div style="font-size:10px;color:var(--m);margin-top:1px">Pre-operative Anesthesia Risk Assessment · AI 협진 자동생성</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:7px">
+    <button class="btn bs bsm" onclick="openSettings()">⚙️ API 설정</button>
+    <button class="btn bs bsm" onclick="openEMR()">🏥 EMR 설정</button>
+    <button class="btn bo bsm" onclick="doExport()">💾 내보내기</button>
+    <button class="btn bo bsm" onclick="doReset()">＋ 새 환자</button>
+  </div>
+</div>
+
+<!-- BODY -->
+<div class="body">
+
+  <!-- LEFT -->
+  <div class="left">
+    <div class="tabs" id="tabBar"></div>
+    <div class="content" id="stepContent"></div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="right">
+    <div class="rh">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:#fff" id="rName">환자 정보를 입력하세요</div>
+        <div style="font-size:10px;color:var(--m);margin-top:2px" id="rSub">좌측 패널에서 단계별로 입력 후 협진 답변을 생성하세요</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span id="rBadge"></span>
+        <button class="btn bo bsm" id="copyBtn" style="display:none" onclick="doRopy()">📋 복사</button>
+      </div>
+    </div>
+    <div class="rb">
+      <div id="riskCard" style="display:none"></div>
+      <div id="consultWrap" style="display:none">
+        <div class="ct" style="margin-bottom:7px">🤖 마취과 협진 답변</div>
+        <div class="cbox" id="consultBox"></div>
+      </div>
+      <div id="emptyState" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:90%;gap:10px;opacity:.3">
+        <div style="font-size:52px">🏥</div>
+        <div style="font-size:14px;font-weight:700">좌측 패널에서 환자 정보를 입력하세요</div>
+        <div style="font-size:11px;color:var(--m);text-align:center">모든 단계 입력 후 AI 협진 답변 생성 버튼을 클릭하면<br>마취과 협진 답변이 자동으로 작성됩니다</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- 설정 모달 -->
+<div class="ov" id="modSettings" style="display:none">
+  <div class="mod">
+    <h3>⚙️ Claude API 설정</h3>
+    <div id="webModeInfo" style="display:none;padding:9px 11px;border-radius:8px;background:rgba(0,200,150,.08);border:1px solid rgba(0,200,150,.3);font-size:11px;color:var(--a);line-height:1.5;margin-bottom:12px">🔒 웹 모드: API 키가 서버에 안전하게 저장됩니다. 브라우저에 노출되지 않습니다.</div>
+    <div id="apiKeySection">
+      <label class="lbl mb8">Anthropic API Key</label>
+      <input class="inp mb8" type="password" id="cfgKey" placeholder="sk-ant-api03-..."/>
+    </div>
+    <label class="lbl mb8">협진 생성 모드</label>
+    <div class="sw mb8"><select class="inp" id="cfgMode">
+      <option value="demo">🔵 데모 모드 (API 없이 가상 답변 생성)</option>
+      <option value="api">🟢 실제 Claude API 사용</option>
+    </select></div>
+    <div id="apiKeyNote" style="font-size:11px;color:var(--m);line-height:1.5">API 키는 이 PC에만 저장되며 외부로 전송되지 않습니다.<br>키 발급: <span style="color:var(--a)">console.anthropic.com</span></div>
+    <div class="mf">
+      <button class="btn bo" onclick="closeModal('modSettings')">취소</button>
+      <button class="btn bp" onclick="saveSettings()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- EMR 설정 모달 -->
+<div class="ov" id="modEMR" style="display:none">
+  <div class="mod">
+    <h3>🏥 EMR 연동 설정</h3>
+    <div class="warn-box">⚠️ EMR 연동은 병원 IT팀의 승인 및 FHIR R4 API 권한이 필요합니다.</div>
+    <label class="lbl mb8">FHIR Base URL</label>
+    <input class="inp mb8" id="cfgEmrUrl" placeholder="https://emr.hospital.kr/fhir/r4"/>
+    <label class="lbl mb8">인증 토큰 (Bearer Token)</label>
+    <input class="inp mb8" type="password" id="cfgEmrToken" placeholder="발급받은 토큰"/>
+    <div style="font-size:11px;color:var(--m)">지원 데이터: 환자 기본정보·진단명·활력징후·검사결과 (EMR마다 상이)</div>
+    <div class="mf">
+      <button class="btn bo" onclick="closeModal('modEMR')">취소</button>
+      <button class="btn bs" onclick="testEMR()">연결 테스트</button>
+      <button class="btn bp" onclick="saveEMR()">저장</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══ 데이터 ════════════════════════════════════════════════════════════════════
+const surgTypes=[
+  {v:'',l:'수술 종류 선택...'},
+  {v:'low_superficial',l:'표재성 수술 (내시경, 백내장)'},
+  {v:'low_breast',l:'유방 수술'},
+  {v:'inter_intraperitoneal',l:'복강내 수술'},
+  {v:'inter_orthopedic',l:'정형외과 수술 (관절, 척추)'},
+  {v:'inter_prostate',l:'전립선 수술'},
+  {v:'inter_head_neck',l:'두경부 수술'},
+  {v:'high_aorta',l:'대동맥/혈관 수술'},
+  {v:'high_cardiac',l:'심장 수술'},
+  {v:'emergency',l:'응급 수술'},
+];
+const asaConds=[
+  {id:'dm',l:'당뇨병 (DM)',s:'조절 여부 무관'},
+  {id:'htn',l:'고혈압 (HTN)',s:'조절 중인 경우'},
+  {id:'chronic_lung',l:'만성 폐질환 (COPD, 천식)',s:'조절 중'},
+  {id:'ckd',l:'만성 신질환 (CKD)',s:'투석 미시행'},
+  {id:'liver_mild',l:'간질환 (경증)',s:'간경변 초기'},
+  {id:'cvd',l:'뇌혈관 질환 (CVA, TIA)',s:'과거력'},
+  {id:'cad',l:'관상동맥 질환 (CAD)',s:'약물 조절 중'},
+  {id:'chf_controlled',l:'심부전 (조절됨)',s:'EF>50%, 무증상'},
+  {id:'mi_over12m',l:'심근경색 (12개월 이상)',s:'안정기'},
+  {id:'mi_within12m',l:'심근경색 (12개월 이내)',s:'최근 발생'},
+  {id:'chf_severe',l:'심부전 (중증)',s:'EF<25%, 조절 안됨'},
+  {id:'dialysis',l:'투석 중 (혈액/복막)',s:''},
+  {id:'active_sepsis',l:'패혈증 / 쇼크',s:'활동성'},
+  {id:'terminal',l:'말기 질환',s:'생존 기대 1년 미만'},
+];
+const rcriItems=[
+  {id:'hrs',l:'고위험 수술',s:'복강내, 흉강내, 혈관 수술'},
+  {id:'ihd',l:'허혈성 심질환',s:'MI 과거력, 협심증, 스텐트'},
+  {id:'chf',l:'울혈성 심부전',s:'증상 있는 CHF'},
+  {id:'cvdr',l:'뇌혈관 질환',s:'CVA, TIA 과거력'},
+  {id:'ins',l:'인슐린 의존성 당뇨',s:'인슐린 사용 중'},
+  {id:'cr2',l:'Creatinine > 2.0 mg/dL',s:'신부전'},
+];
+const metsOpts=[{v:'',l:'기능 상태 선택...'},{v:'1',l:'4 METs 미만 — 집안 가사 활동 가능'},{v:'2',l:'4-7 METs — 계단 1-2층 오르기 가능'},{v:'3',l:'7 METs 이상 — 달리기, 스포츠 가능'}];
+const sbItems=[{id:'sn',l:'크게 코를 곱니까?'},{id:'ti',l:'낮에 자주 피곤하거나 졸립니까?'},{id:'ob',l:'수면 중 무호흡이 관찰된 적 있습니까?'},{id:'bp',l:'고혈압을 치료 중입니까?'},{id:'b3',l:'BMI > 35'},{id:'a5',l:'나이 > 50세'},{id:'n4',l:'목 둘레 > 40cm'},{id:'ml',l:'남성'}];
+const ecgOpts=[{v:'',l:'판독 결과 선택...'},{v:'정상 동율동 (Normal sinus rhythm)',l:'정상 동율동 (NSR)'},{v:'동성 빈맥 (Sinus tachycardia)',l:'동성 빈맥'},{v:'동성 서맥 (Sinus bradycardia)',l:'동성 서맥'},{v:'심방세동 (Atrial fibrillation)',l:'심방세동 (AF)'},{v:'심방조동 (Atrial flutter)',l:'심방조동'},{v:'1도 방실차단 (1st degree AV block)',l:'1도 방실차단'},{v:'완전 좌각차단 (LBBB)',l:'완전 좌각차단 (LBBB)'},{v:'완전 우각차단 (RBBB)',l:'완전 우각차단 (RBBB)'},{v:'ST 변화 (Ischemic pattern)',l:'ST 변화 (허혈성)'},{v:'좌심실 비대 (LVH)',l:'좌심실 비대 (LVH)'},{v:'조기 심실 수축 (PVC)',l:'조기 심실 수축 (PVC)'},{v:'기타 이상 소견',l:'기타 이상 소견'}];
+const cxrOpts=[{v:'',l:'판독 결과 선택...'},{v:'정상 (Normal)',l:'정상 (Normal)'},{v:'심비대 (Cardiomegaly)',l:'심비대'},{v:'폐부종 (Pulmonary edema)',l:'폐부종'},{v:'흉수 (Pleural effusion)',l:'흉수'},{v:'폐렴 (Pneumonia)',l:'폐렴'},{v:'무기폐 (Atelectasis)',l:'무기폐'},{v:'폐과팽창 (Hyperinflation, COPD pattern)',l:'폐과팽창 (COPD)'},{v:'폐결절/종괴 (Pulmonary nodule/mass)',l:'폐결절/종괴'},{v:'기흉 (Pneumothorax)',l:'기흉'},{v:'기타 이상 소견',l:'기타 이상 소견'}];
+const pftOpts=[{v:'',l:'결과 선택...'},{v:'미시행',l:'미시행'},{v:'정상 (Normal)',l:'정상 (Normal)'},{v:'폐쇄성 환기장애 (Obstructive)',l:'폐쇄성 (Obstructive)'},{v:'제한성 환기장애 (Restrictive)',l:'제한성 (Restrictive)'},{v:'혼합성 환기장애 (Mixed)',l:'혼합성 (Mixed)'}];
+const asaDesc={I:'정상 건강인 — 사망률 <0.1%',II:'경증 전신 질환 — 사망률 0.2%',III:'중증 전신 질환 — 사망률 1.8%',IV:'생명위협 전신 질환 — 사망률 7.8%',V:'수술 없이 생존 불가 — 사망률 9.4%+'};
+
+// ══ 상태 ══════════════════════════════════════════════════════════════════════
+let step=0;
+let S={pat:{name:'',pid:'',age:'',weight:'',height:'',surgery:'',date:''},asa:{},other:'',rcri:{},labs:{blood:'',ecg:'',ecg_note:'',cxr:'',cxr_note:'',pft:'',fev1:''},mets:'',sb:{}};
+let consultText='';
+let cfg={apiKey:'',mode:'demo',emrUrl:'',emrToken:''};
+const STEPS=['환자정보','ASA','RCRI','검사소견','추가평가'];
+
+// ══ 계산 ══════════════════════════════════════════════════════════════════════
+const bmi=()=>{const{weight,height}=S.pat;return weight&&height?+(weight/((height/100)**2)).toFixed(1):null};
+const bmiCat=b=>{if(!b)return null;if(b<18.5)return{l:'저체중',c:'#4FC3F7'};if(b<23)return{l:'정상',c:'#00C896'};if(b<25)return{l:'과체중',c:'#FFB547'};if(b<30)return{l:'비만 1단계',c:'#FFB547'};if(b<35)return{l:'비만 2단계',c:'#FF5C5C'};if(b<40)return{l:'비만 3단계',c:'#FF5C5C'};return{l:'고도비만',c:'#FF2D2D'}};
+const compASA=()=>{const c=S.asa,b=bmi(),sev=b>=40,ob=b>=30&&b<40;if(c.active_sepsis||c.terminal)return{cls:'V',lv:'very-high'};if(c.mi_within12m||c.chf_severe||c.dialysis||sev)return{cls:'IV',lv:'high'};const n=[c.dm,c.htn,ob,c.chronic_lung,c.ckd,c.liver_mild,c.cvd,c.cad,c.chf_controlled,c.mi_over12m].filter(Boolean).length;if(n>=2)return{cls:'III',lv:'moderate'};if(n>=1)return{cls:'II',lv:'low'};return{cls:'I',lv:'low'}};
+const rcriN=()=>Object.values(S.rcri).filter(Boolean).length;
+const rcriR=n=>{if(n<=1)return{lv:'low',lb:'저위험',mc:n===0?'3.9%':'6.0%'};if(n===2)return{lv:'moderate',lb:'중등도 위험',mc:'10.1%'};return{lv:'high',lb:'고위험',mc:'15%+'}};
+const sbN=()=>Object.values(S.sb).filter(Boolean).length;
+const surgR=()=>{const t=S.pat.surgery;if(!t)return null;if(t.startsWith('low'))return{lv:'low',lb:'저위험 (<1%)',pc:'<1%'};if(t.startsWith('inter'))return{lv:'moderate',lb:'중등도 위험 (1-5%)',pc:'1-5%'};if(t.startsWith('high')||t==='emergency')return{lv:'high',lb:'고위험 (>5%)',pc:'>5%'};return null};
+const rC=lv=>({low:'#00C896',moderate:'#FFB547',high:'#FF5C5C','very-high':'#FF2D2D'}[lv]||'#7A90B0');
+const rK=lv=>({low:'저위험',moderate:'중등도 위험',high:'고위험','very-high':'매우 고위험'}[lv]||'');
+const overR=()=>{const lv={low:0,moderate:1,high:2,'very-high':3},asa=compASA(),rc=rcriR(rcriN()),sr=surgR();const mx=Math.max(lv[asa.lv]||0,lv[rc.lv]||0,lv[sr?.lv]||0);return Object.keys(lv).find(k=>lv[k]===mx)};
+
+// ══ 렌더 헬퍼 ════════════════════════════════════════════════════════════════
+const bdg=(lv,t)=>`<span class="bdg" style="border:1px solid ${rC(lv)};background:${rC(lv)}22;color:${rC(lv)}">${t}</span>`;
+const sel=(opts,val,id,onch)=>`<div class="sw mb8"><select class="inp" id="${id}" onchange="${onch}">${opts.map(o=>`<option value="${o.v}"${o.v===val?' selected':''}>${o.l}</option>`).join('')}</select></div>`;
+const inp=(lb,id,val,ex='')=>`<div class="mb8"><label class="lbl">${lb}</label><input class="inp" id="${id}" value="${(val||'').replace(/"/g,'&quot;')}" oninput="pi('${id}')" ${ex}/></div>`;
+const checks=(arr,obj,grp)=>arr.map(c=>`<div class="ci${obj[c.id]?' on':''}" onclick="tc('${grp}','${c.id}')"><div class="cb">${obj[c.id]?'<span style="color:#0B1120;font-size:10px;font-weight:900">✓</span>':''}</div><div><div class="cl">${c.l}</div>${c.s?`<div class="cs">${c.s}</div>`:''}</div></div>`).join('');
+
+// ══ 탭 렌더 ══════════════════════════════════════════════════════════════════
+function renderTabs(){
+  document.getElementById('tabBar').innerHTML=STEPS.map((l,i)=>`
+    <button class="tab${step===i?' on':step>i?' done':''}" onclick="gs(${i})">
+      ${step>i&&step!==i?'<div class="tdot"></div>':''}
+      <span>${l}</span><div class="tl"></div>
+    </button>`).join('');
+}
+function gs(i){step=i;render();}
+
+// ══ 스텝 렌더 ════════════════════════════════════════════════════════════════
+function s0(){
+  const b=bmi(),bc=bmiCat(b),sr=surgR();
+  return`<div class="fi">
+  <div class="card">
+    <div class="ct">👤 환자 기본 정보</div>
+    <div class="g2">${inp('환자 이름','pn',S.pat.name,'placeholder="홍길동"')}${inp('환자 ID','pp',S.pat.pid,'placeholder="12345678"')}</div>
+    <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:8px">
+      <div style="flex:1">${inp('나이','pa',S.pat.age,'type="number" placeholder="65"')}</div>
+      <div style="flex:1">${inp('수술 예정일','pd',S.pat.date,'type="date"')}</div>
+      <button class="btn bs bsm" style="margin-bottom:8px;flex-shrink:0" onclick="emrFetch()">🏥 EMR 조회</button>
+    </div>
+    <div class="g2">${inp('체중 (kg)','pw',S.pat.weight,'type="number" placeholder="70"')}${inp('신장 (cm)','ph',S.pat.height,'type="number" placeholder="170"')}</div>
+    ${b?`<div style="padding:10px 12px;border-radius:10px;background:#0B112088;border:1px solid ${bc?.c}44;display:flex;align-items:center;justify-content:space-between;margin-top:-4px">
+      <div><div style="font-size:10px;color:var(--m);margin-bottom:2px">BMI 자동계산</div>
+        <div style="display:flex;align-items:baseline;gap:4px"><span style="font-size:24px;font-weight:800;color:${bc?.c};line-height:1">${b}</span><span style="font-size:11px;color:var(--m)">kg/m²</span></div>
+      </div>
+      <div style="text-align:right">
+        <span style="padding:3px 10px;border-radius:20px;background:${bc?.c}22;border:1px solid ${bc?.c}55;color:${bc?.c};font-size:11px;font-weight:700">${bc?.l}</span>
+        ${b>=40?`<div style="font-size:10px;color:#FF5C5C;margin-top:3px">⚠️ ASA IV 요인</div>`:''}
+        ${b>=30&&b<40?`<div style="font-size:10px;color:#FFB547;margin-top:3px">ASA III 요인 반영</div>`:''}
+      </div>
+    </div>`:''}
+  </div>
+  <div class="card">
+    <div class="ct">🔪 수술 정보</div>
+    ${sel(surgTypes.map(s=>({v:s.v,l:s.l})),S.pat.surgery,'ps',"pi('ps')")}
+    ${sr?`<div style="display:flex;align-items:center;gap:7px;margin-top:-4px"><span style="font-size:11px;color:var(--m)">수술 위험도:</span>${bdg(sr.lv,sr.lb)}</div>`:''}
+  </div>
+  <button class="btn bp" style="width:100%" onclick="gs(1)">다음: ASA 분류 평가 →</button>
+</div>`;
+}
+
+function s1(){
+  const asa=compASA(),b=bmi(),bc=bmiCat(b);
+  return`<div class="fi">
+  <div class="card">
+    <div class="ct">🩺 ASA Physical Status</div>
+    <p style="font-size:11px;color:var(--m);margin-bottom:9px">해당하는 동반 질환을 모두 선택하세요</p>
+    ${b?`<div style="padding:7px 10px;border-radius:7px;margin-bottom:7px;background:${bc?.c}11;border:1px dashed ${bc?.c}44;font-size:11px;color:${bc?.c};display:flex;justify-content:space-between"><span>체격 지수</span><strong>BMI ${b} — ${bc?.l} (자동 반영됨)</strong></div>`:''}
+    ${checks(asaConds,S.asa,'asa')}
+    <div style="margin-top:7px;padding:10px;border-radius:8px;background:#0B1120;border:1px solid ${S.other?'var(--a)':'var(--b)'};transition:border-color .2s">
+      <div style="font-size:11px;color:var(--m);margin-bottom:4px;font-weight:600">📝 기타 동반 질환</div>
+      <textarea class="inp" id="ot" placeholder="기타 질환명&#10;예) 갑상선 기능 저하증, 파킨슨병..." style="background:transparent;border:none;padding:0;min-height:48px;font-size:12px" oninput="S.other=this.value;upR()">${S.other}</textarea>
+    </div>
+  </div>
+  <div class="card" style="border:2px solid ${rC(asa.lv)}">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div><div style="font-size:10px;color:var(--m);margin-bottom:3px">현재 ASA 분류</div>
+        <div class="rscore" style="color:${rC(asa.lv)}">Class ${asa.cls}</div>
+        <div style="font-size:11px;color:var(--m);margin-top:3px">${asaDesc[asa.cls]}</div>
+      </div>${bdg(asa.lv,rK(asa.lv))}
+    </div>
+  </div>
+  <div class="brow"><button class="btn bo" style="flex:1" onclick="gs(0)">← 이전</button><button class="btn bp" style="flex:2" onclick="gs(2)">다음: RCRI →</button></div>
+</div>`;
+}
+
+function s2(){
+  const n=rcriN(),r=rcriR(n);
+  return`<div class="fi">
+  <div class="card">
+    <div class="ct">❤️ RCRI (심장 위험도)</div>
+    <p style="font-size:11px;color:var(--m);margin-bottom:9px">Revised Cardiac Risk Index — 해당 항목을 선택하세요</p>
+    ${checks(rcriItems,S.rcri,'rcri')}
+  </div>
+  <div class="card" style="border:2px solid ${rC(r.lv)}">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div><div style="font-size:10px;color:var(--m);margin-bottom:3px">RCRI Score</div>
+        <div style="display:flex;align-items:baseline;gap:5px"><span class="rscore" style="color:${rC(r.lv)}">${n}</span><span style="font-size:13px;color:var(--m)">/ 6점</span></div>
+        <div style="font-size:11px;color:var(--m);margin-top:3px">MACE 위험도: <strong style="color:${rC(r.lv)}">${r.mc}</strong></div>
+      </div>${bdg(r.lv,r.lb)}
+    </div>
+  </div>
+  <div class="brow"><button class="btn bo" style="flex:1" onclick="gs(1)">← 이전</button><button class="btn bp" style="flex:2" onclick="gs(3)">다음: 검사소견 →</button></div>
+</div>`;
+}
+
+function s3(){
+  const l=S.labs;
+  return`<div class="fi">
+  <div class="card">
+    <div class="ct">🩸 혈액검사 소견</div>
+    <textarea class="inp" id="lb" placeholder="이상 소견만 기재 (정상이면 'WNL')&#10;예) Hb 9.2↓, PLT 85K↓, BUN/Cr 28/1.8" style="min-height:68px" oninput="S.labs.blood=this.value;upR()">${l.blood}</textarea>
+  </div>
+  <div class="card">
+    <div class="ct">💓 심전도 (ECG)</div>
+    ${sel(ecgOpts,l.ecg,'le',"S.labs.ecg=this.value;upR()")}
+    <textarea class="inp" id="len" placeholder="추가 소견 (선택사항)" style="min-height:40px" oninput="S.labs.ecg_note=this.value;upR()">${l.ecg_note}</textarea>
+  </div>
+  <div class="card">
+    <div class="ct">🫁 흉부 X선 (Chest X-ray)</div>
+    ${sel(cxrOpts,l.cxr,'lc',"S.labs.cxr=this.value;upR()")}
+    <textarea class="inp" id="lcn" placeholder="추가 소견 (선택사항)" style="min-height:40px" oninput="S.labs.cxr_note=this.value;upR()">${l.cxr_note}</textarea>
+  </div>
+  <div class="card">
+    <div class="ct">🌬️ 폐기능 검사 (PFT)</div>
+    ${sel(pftOpts,l.pft,'lp',"S.labs.pft=this.value;render()")}
+    ${l.pft&&l.pft!=='미시행'&&l.pft!=='정상 (Normal)'?`
+    <div style="margin-top:4px">
+      <label class="lbl">FEV1 (예측치 대비 %)</label>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="position:relative;flex:1"><input class="inp" type="number" id="lf" value="${l.fev1}" placeholder="예: 68" min="0" max="200" oninput="S.labs.fev1=this.value;upR()" style="padding-right:30px"/>
+          <span style="position:absolute;right:9px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--m)">%</span>
+        </div>
+        ${l.fev1?`<span style="padding:5px 11px;border-radius:8px;font-size:11px;font-weight:700;flex-shrink:0;${+l.fev1>=70?'background:#00C89622;color:#00C896;border:1px solid #00C89644':+l.fev1>=50?'background:#FFB54722;color:#FFB547;border:1px solid #FFB54744':'background:#FF5C5C22;color:#FF5C5C;border:1px solid #FF5C5C44'}">${+l.fev1>=70?'경증':+l.fev1>=50?'중등도':'중증'}</span>`:''}
+      </div>
+      ${l.fev1&&+l.fev1<50?`<div style="margin-top:6px;padding:6px 10px;border-radius:7px;background:#FF5C5C11;border:1px solid #FF5C5C22;font-size:11px;color:#FF5C5C">⚠️ FEV1 &lt; 50% — 폐 합병증 고위험, 마취 전 최적화 필요</div>`:''}
+    </div>`:''}
+  </div>
+  <div class="brow"><button class="btn bo" style="flex:1" onclick="gs(2)">← 이전</button><button class="btn bp" style="flex:2" onclick="gs(4)">다음: 추가 평가 →</button></div>
+</div>`;
+}
+
+function s4(){
+  const sb=sbN(),sr=surgR(),asa=compASA(),rc=rcriR(rcriN()),risk=overR();
+  return`<div class="fi">
+  <div class="card">
+    <div class="ct">🏃 기능 상태 (METs)</div>
+    ${sel(metsOpts,S.mets,'pm',"S.mets=this.value;upR()")}
+    ${S.mets==='1'?`<div style="padding:6px 10px;border-radius:7px;background:#FF5C5C11;border:1px solid #FF5C5C22;font-size:11px;color:#FF5C5C;margin-top:-4px">⚠️ 기능 상태 불량 — 추가 심장 평가 고려</div>`:''}
+  </div>
+  <div class="card">
+    <div class="ct">😴 STOP-BANG (수면무호흡)</div>
+    ${checks(sbItems,S.sb,'sb')}
+    <div style="margin-top:6px;padding:6px 10px;border-radius:7px;background:#00000033;font-size:11px;color:var(--m)">
+      STOP-BANG: <strong style="color:${sb>=5?'#FF5C5C':sb>=3?'#FFB547':'#00C896'}">${sb}점 — ${sb>=5?'고위험':sb>=3?'중등도 위험':'저위험'}</strong>
+    </div>
+  </div>
+  <div class="card" style="border:2px solid ${rC(risk)}66">
+    <div class="ct">📊 종합 위험도 요약</div>
+    ${[{l:'ASA Class',v:`Class ${asa.cls}`,lv:asa.lv},{l:'RCRI',v:`${rcriN()}점 (${rc.mc})`,lv:rc.lv},{l:'수술 위험도',v:sr?.pc||'미선택',lv:sr?.lv||'low'}].map(i=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:12px;color:var(--m)">${i.l}</span>
+        <span style="font-size:12px;font-weight:600;color:${rC(i.lv)}">${i.v}</span>
+      </div>`).join('')}
+    <div style="border-top:1px solid var(--b);padding-top:8px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:13px;font-weight:700">종합 평가</span>${bdg(risk,rK(risk))}
+    </div>
+  </div>
+  <div class="brow"><button class="btn bo" style="flex:1" onclick="gs(3)">← 이전</button><button class="btn bp" style="flex:2" onclick="genConsult()">🤖 AI 협진 답변 생성</button></div>
+</div>`;
+}
+
+// ══ 오른쪽 패널 업데이트 ═════════════════════════════════════════════════════
+function upR(){
+  const asa=compASA(),rc=rcriR(rcriN()),sr=surgR(),risk=overR(),p=S.pat;
+  document.getElementById('rName').textContent=`${p.name||'환자'}${p.pid?` (${p.pid})`:''} ${p.age?`· ${p.age}세`:''}`;
+  document.getElementById('rSub').textContent=surgTypes.find(s=>s.v===p.surgery)?.l||'수술 종류를 선택하세요';
+  document.getElementById('rBadge').innerHTML=bdg(risk,rK(risk));
+  const rc2=document.getElementById('riskCard');
+  rc2.style.display='block';
+  document.getElementById('emptyState').style.display='none';
+  rc2.innerHTML=`<div style="background:var(--card);border:2px solid ${rC(risk)};border-radius:13px;padding:13px;margin-bottom:12px">
+    <div style="display:flex">
+      ${[{l:'ASA',v:`Class ${asa.cls}`,lv:asa.lv},{l:'RCRI',v:`${rcriN()}/6`,lv:rc.lv},{l:'수술위험도',v:sr?.pc||'—',lv:sr?.lv||'low'}].map((it,i,a)=>`
+        <div style="display:flex;flex:1;align-items:center">
+          <div style="text-align:center;flex:1">
+            <div style="font-size:20px;font-weight:800;color:${rC(it.lv)}">${it.v}</div>
+            <div style="font-size:10px;color:var(--m);margin-top:2px">${it.l}</div>
+          </div>
+          ${i<a.length-1?'<div style="width:1px;height:30px;background:var(--b)"></div>':''}
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+// ══ 메인 렌더 ════════════════════════════════════════════════════════════════
+function render(){
+  renderTabs();
+  document.getElementById('stepContent').innerHTML=[s0,s1,s2,s3,s4][step]();
+  upR();
+}
+
+// ══ 입력 이벤트 ══════════════════════════════════════════════════════════════
+function pi(id){
+  const v=document.getElementById(id)?.value;
+  const m={pn:'name',pp:'pid',pa:'age',pw:'weight',ph:'height',pd:'date',ps:'surgery'};
+  if(m[id]) S.pat[m[id]]=v;
+  if(id==='ps'){upR();return;}
+  upR();renderTabs();
+}
+function tc(g,id){
+  if(g==='asa') S.asa[id]=!S.asa[id];
+  else if(g==='rcri') S.rcri[id]=!S.rcri[id];
+  else if(g==='sb') S.sb[id]=!S.sb[id];
+  render();
+}
+
+// ══ EMR 조회 ══════════════════════════════════════════════════════════════════
+async function emrFetch(){
+  const id=S.pat.pid||S.pat.name;
+  if(!id){alert('환자 이름 또는 ID를 먼저 입력하세요.');return;}
+  if(!cfg.emrUrl){alert('EMR 설정을 먼저 완료하세요.\n상단 헤더 → EMR 설정');return;}
+  try{
+    let data;
+    if(window.electronAPI){
+      data=await window.electronAPI.fetchEMRPatient({patientId:id,emrUrl:cfg.emrUrl,emrToken:cfg.emrToken});
+    }else{
+      // 브라우저 테스트용 샘플
+      data={resourceType:'Patient',name:[{text:'홍길동'}],birthDate:'1958-03-15',gender:'male'};
+    }
+    if(data.resourceType==='OperationOutcome') throw new Error(data.issue?.[0]?.details?.text||'EMR 조회 오류');
+    if(data.name?.[0]?.text) S.pat.name=data.name[0].text;
+    else if(data.name?.[0]){const n=data.name[0];S.pat.name=[(n.family||''),(n.given||[]).join(' ')].join(' ').trim();}
+    if(data.birthDate){S.pat.age=String(new Date().getFullYear()-parseInt(data.birthDate));}
+    render();
+    alert(`✅ EMR 조회 완료\n${S.pat.name||id} 환자 정보를 불러왔습니다.`);
+  }catch(e){alert('EMR 조회 실패: '+e.message);}
+}
+
+// ══ 협진 생성 ════════════════════════════════════════════════════════════════
+async function genConsult(){
+  const asa=compASA(),rc=rcriR(rcriN()),sr=surgR(),risk=overR();
+  const p=S.pat,l=S.labs,b=bmi(),bc=bmiCat(b);
+  document.getElementById('emptyState').style.display='none';
+  document.getElementById('consultWrap').style.display='block';
+  document.getElementById('copyBtn').style.display='flex';
+  const box=document.getElementById('consultBox');
+  box.innerHTML='<div style="display:flex;align-items:center;gap:10px;padding:20px"><div class="spin"></div><span style="color:var(--a)">협진 답변 생성 중...</span></div>';
+
+  const comor=[...Object.entries(S.asa).filter(([,v])=>v).map(([k])=>asaConds.find(c=>c.id===k)?.l),S.other].filter(Boolean).join(', ')||'없음';
+  const ecgS=[l.ecg,l.ecg_note].filter(Boolean).join(' / ')||'미기재';
+  const cxrS=[l.cxr,l.cxr_note].filter(Boolean).join(' / ')||'미기재';
+  const pftS=l.pft&&l.pft!=='미시행'?`${l.pft}${l.fev1?`, FEV1 ${l.fev1}%`:''}`:(l.pft||'미시행');
+  const ln=(pred,t)=>pred?`   · ${t}\n`:'';
+
+  const sysP=`당신은 대학병원 마취통증의학과 전문의입니다.
+
+아래는 실제 협진 답변 문서의 형식 예시입니다. 이 형식을 그대로 따라 답변을 작성하세요.
+
+[형식 예시]
+─────────────────────────────────────────
+환자명/ID, 나이, 수술명 등 기본 정보를 첫 줄에 간략히 씁니다.
+ASA Class와 마취 위험도를 한두 줄로 명시합니다.
+
+그 다음, 동반 질환 및 검사 이상 소견 각각에 대해 다음 패턴으로 서술합니다:
+
+  [질환/소견명]으로 인해 술 중후 [합병증1], [합병증2] 등 발생 [가능성/위험] 있습니다.
+  [이를 위한 조치]를 [바랍니다/권고 드립니다].
+
+예)
+  고혈압으로 인해 술 중후 혈압 조절 어려울 수 있으며, 이로 인해 심근허혈, 심근경색, 뇌경색, 뇌출혈 등 발생 가능성 있습니다.
+  복용 중인 혈압약은 수술 당일 d/c 바라며, 반감기가 짧은 CCB 로 교체 투여 바랍니다.
+
+  폐기능 이상으로 인해 술 중후 무기폐, 폐렴 등 발생 위험 있으며, 저산소증으로 인해 인공환기 치료가 필요할 수 있습니다.
+  수술실 입실 30분전 기관지 확장제 nebulization 시행 바랍니다.
+
+마지막에 마취 방향을 한두 줄로 제시하고, 반드시 아래 문구로 끝냅니다:
+  최선을 다하겠습니다. 감사합니다.
+─────────────────────────────────────────
+
+[작성 규칙]
+- 위 형식을 따르되, 각 문장의 내용은 이 환자의 구체적인 상태에 맞게 당신이 직접 판단하여 작성하세요. 예시 문장을 그대로 복사하지 마세요.
+- 번호나 섹션 제목(1. 2. 3. / 수술 전 위험 고지: 등)을 붙이지 마세요. 흐르는 문단 형식으로 작성하세요.
+- 동반 질환이 없거나 검사가 정상이면 해당 내용은 생략하세요.
+- 임상적으로 중요한 사항에 집중하고, 불필요한 반복은 피하세요.`;
+
+  const userP=`[환자 정보]
+이름: ${p.name||'미기재'} / ID: ${p.pid||'미기재'} / 나이: ${p.age||'미기재'}세
+체중 ${p.weight||'미기재'}kg / 신장 ${p.height||'미기재'}cm / BMI ${b?`${b} (${bc?.l})`:'미기재'}
+수술명: ${surgTypes.find(s=>s.v===p.surgery)?.l||'미기재'} / 예정일: ${p.date||'미기재'}
+
+[위험도 평가]
+ASA Physical Status: Class ${asa.cls} — ${asaDesc[asa.cls]}
+동반 질환: ${comor}
+RCRI ${rcriN()}점 → ${rc.lb} (MACE 위험 ${rc.mc})
+기능 상태: ${metsOpts.find(m=>m.v===S.mets)?.l||'미평가'}
+STOP-BANG: ${sbN()}점 (${sbN()>=5?'고위험':sbN()>=3?'중등도':'저위험'})
+수술 위험도: ${sr?.lb||'미분류'} / 종합: ${rK(risk)}
+
+[검사 소견]
+혈액검사: ${l.blood||'특이 소견 없음'}
+ECG: ${ecgS}
+CXR: ${cxrS}
+PFT: ${pftS}
+
+위 환자에 대해 마취과 협진 답변을 작성하세요.
+형식은 system prompt의 예시를 따르고, 내용은 당신의 의학적 판단으로 이 환자에게 맞게 직접 작성하세요.
+답변 일자: ${p.date||new Date().toLocaleDateString('ko-KR')}`;
+
+  if(cfg.mode==='api'&&(isWeb||cfg.apiKey)){
+    try{
+      let txt;
+      if(window.electronAPI){txt=await window.electronAPI.callClaudeAPI({prompt:userP,systemPrompt:sysP,apiKey:cfg.apiKey});}
+      else if(isWeb){
+        // 웹 모드: 서버리스 프록시 경유 — API 키는 서버 환경변수에만 존재
+        const r=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,system:sysP,messages:[{role:'user',content:userP}]})});
+        const d=await r.json();if(d.error)throw new Error(d.error.message);
+        txt=d.content?.map(c=>c.text||'').join('\n')||'';
+      }else{
+        const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':cfg.apiKey,'anthropic-version':'2023-06-01'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,system:sysP,messages:[{role:'user',content:userP}]})});
+        const d=await r.json();if(d.error)throw new Error(d.error.message);
+        txt=d.content?.map(c=>c.text||'').join('\n')||'';
+      }
+      consultText=txt;box.textContent=txt;{const ov=document.getElementById('overlayTxt');if(ov)ov.textContent=txt;if(isAndroid)document.getElementById('overlay').style.display='flex';}
+    }catch(e){box.textContent='API 오류: '+e.message;}
+  }else{
+    // 데모 모드 — 형식 미리보기 (실제 내용은 API 키 설정 후 AI가 작성)
+    const mock=`[마취과 협진 답변]
+
+1. 환자 평가 요약
+   ${p.name||'환자'}${p.pid?` (ID: ${p.pid})`:''} (${p.age||'?'}세, BMI ${b||'?'} ${bc?.l||''})
+   동반 질환: ${comor}
+   예정 수술: ${surgTypes.find(s=>s.v===p.surgery)?.l||'미기재'}
+   검사 소견: ECG ${ecgS} / CXR ${cxrS} / PFT ${pftS}
+
+2. 마취 위험도 평가
+   - ASA Physical Status: Class ${asa.cls} (${asaDesc[asa.cls]})
+   - RCRI Score: ${rcriN()}점 → ${rc.lb} (MACE 위험도 ${rc.mc})
+   - 수술 위험도: ${sr?.lb||'미분류'}
+   - 종합 위험도: ${rK(risk)}
+
+3. 수술 전 위험 고지
+   ※ 데모 모드입니다. API 키를 설정하면 AI가 환자의 동반 질환·검사 소견을
+     바탕으로 임상적 위험 고지를 직접 작성합니다.
+
+4. 수술 전 권고사항
+   ※ 데모 모드입니다. AI가 약물 조정, 처치, 추가 협진 필요 여부를 판단하여
+     구체적인 권고사항을 자유롭게 작성합니다.
+
+5. 마취 계획 (권고안)
+   ※ 데모 모드입니다. AI가 이 환자에게 적합한 마취 계획을 직접 제안합니다.
+
+─────────────────────────────────────────
+ ▶ 실제 AI 협진 답변 생성 방법:
+   상단 [⚙️ API 설정] → API 키 입력 → 모드를 "실제 Claude API"로 변경
+─────────────────────────────────────────
+
+최선을 다하겠습니다. 감사합니다.
+
+답변 일자: ${p.date||new Date().toLocaleDateString('ko-KR')}`;
+
+    consultText=mock;
+    box.textContent='';
+    let i=0;
+    const t=()=>{if(i<=mock.length){const s=mock.slice(0,i);box.textContent=s;const ov=document.getElementById('overlayTxt');if(ov)ov.textContent=s;i+=12;setTimeout(t,14);}else{box.textContent=mock;const ov=document.getElementById('overlayTxt');if(ov)ov.textContent=mock;if(isAndroid)document.getElementById('overlay').style.display='flex';}};
+    setTimeout(t,600);
+  }
+}
+
+// ══ 복사/내보내기/초기화 ═════════════════════════════════════════════════════
+async function doRopy(){
+  await nativeCopy(consultText);
+  const b=document.getElementById('copyBtn');
+  b.textContent='✓ 복사됨';setTimeout(()=>b.textContent='📋 복사',2000);
+}
+async function doExport(){
+  if(!consultText){nativeAlert('먼저 협진 답변을 생성하세요.');return;}
+  await nativeSave(consultText,S.pat.name);
+}
+function doReset(){
+  if(!confirm('새 환자 평가를 시작하시겠습니까?\n현재 입력 내용이 초기화됩니다.'))return;
+  step=0;S={pat:{name:'',pid:'',age:'',weight:'',height:'',surgery:'',date:''},asa:{},other:'',rcri:{},labs:{blood:'',ecg:'',ecg_note:'',cxr:'',cxr_note:'',pft:'',fev1:''},mets:'',sb:{}};
+  consultText='';
+  document.getElementById('consultWrap').style.display='none';
+  document.getElementById('emptyState').style.display='flex';
+  document.getElementById('riskCard').style.display='none';
+  document.getElementById('copyBtn').style.display='none';
+  render();
+}
+
+// ══ 설정 ═════════════════════════════════════════════════════════════════════
+function openSettings(){
+  document.getElementById('cfgKey').value=cfg.apiKey||'';
+  document.getElementById('cfgMode').value=cfg.mode||'demo';
+  document.getElementById('apiKeySection').style.display=isWeb?'none':'block';
+  document.getElementById('apiKeyNote').style.display=isWeb?'none':'block';
+  document.getElementById('webModeInfo').style.display=isWeb?'block':'none';
+  document.getElementById('modSettings').style.display='flex';
+}
+function openEMR(){
+  document.getElementById('cfgEmrUrl').value=cfg.emrUrl||'';
+  document.getElementById('cfgEmrToken').value=cfg.emrToken||'';
+  document.getElementById('modEMR').style.display='flex';
+}
+function closeModal(id){document.getElementById(id).style.display='none';}
+async function saveSettings(){
+  cfg.apiKey=document.getElementById('cfgKey').value;
+  cfg.mode=document.getElementById('cfgMode').value;
+  if(isElectron)await window.electronAPI.saveConfig(cfg);
+  else AppStorage.save(cfg);
+  closeModal('modSettings');nativeAlert('저장되었습니다.');
+}
+async function saveEMR(){
+  cfg.emrUrl=document.getElementById('cfgEmrUrl').value;
+  cfg.emrToken=document.getElementById('cfgEmrToken').value;
+  if(isElectron)await window.electronAPI.saveConfig(cfg);
+  else AppStorage.save(cfg);
+  closeModal('modEMR');nativeAlert('EMR 설정이 저장되었습니다.');
+}
+async function testEMR(){
+  const url=document.getElementById('cfgEmrUrl').value;
+  if(!url){alert('URL을 입력하세요.');return;}
+  try{const r=await fetch(url+'/metadata',{headers:{Accept:'application/json'}});alert(r.ok?'✅ 연결 성공!':'❌ 연결 실패 (HTTP '+r.status+')');}
+  catch(e){alert('❌ 연결 실패: '+e.message);}
+}
+
+// ══ Electron 메뉴 이벤트 ════════════════════════════════════════════════════
+if(isElectron){
+  window.electronAPI.onMenuExport(()=>doExport());
+  window.electronAPI.onMenuNew(()=>doReset());
+  window.electronAPI.onMenuSettings(()=>openSettings());
+  window.electronAPI.onMenuEMRSettings(()=>openEMR());
+}
+
+// ══ 초기화 ═══════════════════════════════════════════════════════════════════
+async function init(){
+  if(isElectron){const sv=await window.electronAPI.loadConfig();if(sv)cfg={...cfg,...sv};}
+  else{const sv=AppStorage.load();if(sv)cfg={...cfg,...sv};}
+  render();
+}
+init();
+</script>
+
+<div id="overlay" style="display:none;position:fixed;inset:0;background:#080D18;z-index:500;flex-direction:column">
+  <div style="background:#0B1120;border-bottom:1px solid #1E2D45;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+    <span style="font-size:14px;font-weight:700;color:#fff">🤖 협진 답변</span>
+    <div style="display:flex;gap:8px">
+      <button onclick="doRopy();this.textContent='✓';setTimeout(()=>this.textContent='📋 복사',2000)" style="background:#00C89622;border:1px solid #00C896;color:#00C896;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">📋 복사</button>
+      <button onclick="doExport()" style="background:#1E2D4566;border:1px solid #2E4060;color:#E8F0FE;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer">💾 저장</button>
+      <button onclick="document.getElementById('overlay').style.display='none'" style="background:#FF5C5C22;border:1px solid #FF5C5C66;color:#FF5C5C;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">✕ 닫기</button>
+    </div>
+  </div>
+  <div style="flex:1;overflow-y:auto;padding:14px;-webkit-overflow-scrolling:touch">
+    <div id="overlayTxt" style="background:#131D2E;border:1px solid #1E2D45;border-radius:12px;padding:14px;font-size:12px;line-height:1.9;color:#E8F0FE;white-space:pre-wrap;font-family:'DM Mono','Courier New',monospace"></div>
+  </div>
+  <div style="padding:12px;background:#0B1120;border-top:1px solid #1E2D45">
+    <button onclick="genConsult()" style="width:100%;background:#1E2D45;border:1px solid #2E4060;color:#C8D8F0;border-radius:10px;padding:11px;font-size:13px;cursor:pointer">🔄 다시 생성</button>
+  </div>
+</div>
+
+</body>
+</html>
