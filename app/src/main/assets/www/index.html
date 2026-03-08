@@ -115,7 +115,6 @@ function nativeAlert(m){if(isAndroid)AndroidBridge.showToast(m);else alert(m);}
     </div>
   </div>
   <div style="display:flex;gap:7px">
-    <button class="btn bs bsm" onclick="openSettings()">⚙️ API 설정</button>
     <button class="btn bs bsm" onclick="openEMR()">🏥 EMR 설정</button>
     <button class="btn bo bsm" onclick="doExport()">💾 내보내기</button>
     <button class="btn bo bsm" onclick="doReset()">＋ 새 환자</button>
@@ -157,28 +156,6 @@ function nativeAlert(m){if(isAndroid)AndroidBridge.showToast(m);else alert(m);}
     </div>
   </div>
 </div>
-</div>
-
-<!-- 설정 모달 -->
-<div class="ov" id="modSettings" style="display:none">
-  <div class="mod">
-    <h3>⚙️ Claude API 설정</h3>
-    <div id="webModeInfo" style="display:none;padding:9px 11px;border-radius:8px;background:rgba(0,200,150,.08);border:1px solid rgba(0,200,150,.3);font-size:11px;color:var(--a);line-height:1.5;margin-bottom:12px">🔒 웹 모드: API 키가 서버에 안전하게 저장됩니다. 브라우저에 노출되지 않습니다.</div>
-    <div id="apiKeySection">
-      <label class="lbl mb8">Anthropic API Key</label>
-      <input class="inp mb8" type="password" id="cfgKey" placeholder="sk-ant-api03-..."/>
-    </div>
-    <label class="lbl mb8">협진 생성 모드</label>
-    <div class="sw mb8"><select class="inp" id="cfgMode">
-      <option value="demo">🔵 데모 모드 (API 없이 가상 답변 생성)</option>
-      <option value="api">🟢 실제 Claude API 사용</option>
-    </select></div>
-    <div id="apiKeyNote" style="font-size:11px;color:var(--m);line-height:1.5">API 키는 이 PC에만 저장되며 외부로 전송되지 않습니다.<br>키 발급: <span style="color:var(--a)">console.anthropic.com</span></div>
-    <div class="mf">
-      <button class="btn bo" onclick="closeModal('modSettings')">취소</button>
-      <button class="btn bp" onclick="saveSettings()">저장</button>
-    </div>
-  </div>
 </div>
 
 <!-- EMR 설정 모달 -->
@@ -248,7 +225,7 @@ const asaDesc={I:'정상 건강인 — 사망률 <0.1%',II:'경증 전신 질환
 let step=0;
 let S={pat:{name:'',pid:'',age:'',weight:'',height:'',surgery:'',date:''},asa:{},other:'',rcri:{},labs:{blood:'',ecg:'',ecg_note:'',cxr:'',cxr_note:'',pft:'',fev1:''},mets:'',sb:{}};
 let consultText='';
-let cfg={apiKey:'',mode:'demo',emrUrl:'',emrToken:''};
+let cfg={emrUrl:'',emrToken:''};
 const STEPS=['환자정보','ASA','RCRI','검사소견','추가평가'];
 
 // ══ 계산 ══════════════════════════════════════════════════════════════════════
@@ -560,64 +537,16 @@ PFT: ${pftS}
 형식은 system prompt의 예시를 따르고, 내용은 당신의 의학적 판단으로 이 환자에게 맞게 직접 작성하세요.
 답변 일자: ${p.date||new Date().toLocaleDateString('ko-KR')}`;
 
-  if(cfg.mode==='api'&&(isWeb||cfg.apiKey)){
-    try{
-      let txt;
-      if(window.electronAPI){txt=await window.electronAPI.callClaudeAPI({prompt:userP,systemPrompt:sysP,apiKey:cfg.apiKey});}
-      else if(isWeb){
-        // 웹 모드: 서버리스 프록시 경유 — API 키는 서버 환경변수에만 존재
-        const r=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,system:sysP,messages:[{role:'user',content:userP}]})});
-        const d=await r.json();if(d.error)throw new Error(d.error.message);
-        txt=d.content?.map(c=>c.text||'').join('\n')||'';
-      }else{
-        const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':cfg.apiKey,'anthropic-version':'2023-06-01'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,system:sysP,messages:[{role:'user',content:userP}]})});
-        const d=await r.json();if(d.error)throw new Error(d.error.message);
-        txt=d.content?.map(c=>c.text||'').join('\n')||'';
-      }
-      consultText=txt;box.textContent=txt;{const ov=document.getElementById('overlayTxt');if(ov)ov.textContent=txt;if(isAndroid)document.getElementById('overlay').style.display='flex';}
-    }catch(e){box.textContent='API 오류: '+e.message;}
-  }else{
-    // 데모 모드 — 형식 미리보기 (실제 내용은 API 키 설정 후 AI가 작성)
-    const mock=`[마취과 협진 답변]
-
-1. 환자 평가 요약
-   ${p.name||'환자'}${p.pid?` (ID: ${p.pid})`:''} (${p.age||'?'}세, BMI ${b||'?'} ${bc?.l||''})
-   동반 질환: ${comor}
-   예정 수술: ${surgTypes.find(s=>s.v===p.surgery)?.l||'미기재'}
-   검사 소견: ECG ${ecgS} / CXR ${cxrS} / PFT ${pftS}
-
-2. 마취 위험도 평가
-   - ASA Physical Status: Class ${asa.cls} (${asaDesc[asa.cls]})
-   - RCRI Score: ${rcriN()}점 → ${rc.lb} (MACE 위험도 ${rc.mc})
-   - 수술 위험도: ${sr?.lb||'미분류'}
-   - 종합 위험도: ${rK(risk)}
-
-3. 수술 전 위험 고지
-   ※ 데모 모드입니다. API 키를 설정하면 AI가 환자의 동반 질환·검사 소견을
-     바탕으로 임상적 위험 고지를 직접 작성합니다.
-
-4. 수술 전 권고사항
-   ※ 데모 모드입니다. AI가 약물 조정, 처치, 추가 협진 필요 여부를 판단하여
-     구체적인 권고사항을 자유롭게 작성합니다.
-
-5. 마취 계획 (권고안)
-   ※ 데모 모드입니다. AI가 이 환자에게 적합한 마취 계획을 직접 제안합니다.
-
-─────────────────────────────────────────
- ▶ 실제 AI 협진 답변 생성 방법:
-   상단 [⚙️ API 설정] → API 키 입력 → 모드를 "실제 Claude API"로 변경
-─────────────────────────────────────────
-
-최선을 다하겠습니다. 감사합니다.
-
-답변 일자: ${p.date||new Date().toLocaleDateString('ko-KR')}`;
-
-    consultText=mock;
-    box.textContent='';
-    let i=0;
-    const t=()=>{if(i<=mock.length){const s=mock.slice(0,i);box.textContent=s;const ov=document.getElementById('overlayTxt');if(ov)ov.textContent=s;i+=12;setTimeout(t,14);}else{box.textContent=mock;const ov=document.getElementById('overlayTxt');if(ov)ov.textContent=mock;if(isAndroid)document.getElementById('overlay').style.display='flex';}};
-    setTimeout(t,600);
-  }
+  try{
+    let txt;
+    if(window.electronAPI){txt=await window.electronAPI.callClaudeAPI({prompt:userP,systemPrompt:sysP});}
+    else{
+      const r=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:userP,systemPrompt:sysP})});
+      const d=await r.json();if(d.error)throw new Error(d.error.message);
+      txt=d.content?.map(c=>c.text||'').join('\n')||'';
+    }
+    consultText=txt;box.textContent=txt;{const ov=document.getElementById('overlayTxt');if(ov)ov.textContent=txt;if(isAndroid)document.getElementById('overlay').style.display='flex';}
+  }catch(e){box.textContent='API 오류: '+e.message;}
 }
 
 // ══ 복사/내보내기/초기화 ═════════════════════════════════════════════════════
@@ -642,27 +571,12 @@ function doReset(){
 }
 
 // ══ 설정 ═════════════════════════════════════════════════════════════════════
-function openSettings(){
-  document.getElementById('cfgKey').value=cfg.apiKey||'';
-  document.getElementById('cfgMode').value=cfg.mode||'demo';
-  document.getElementById('apiKeySection').style.display=isWeb?'none':'block';
-  document.getElementById('apiKeyNote').style.display=isWeb?'none':'block';
-  document.getElementById('webModeInfo').style.display=isWeb?'block':'none';
-  document.getElementById('modSettings').style.display='flex';
-}
 function openEMR(){
   document.getElementById('cfgEmrUrl').value=cfg.emrUrl||'';
   document.getElementById('cfgEmrToken').value=cfg.emrToken||'';
   document.getElementById('modEMR').style.display='flex';
 }
 function closeModal(id){document.getElementById(id).style.display='none';}
-async function saveSettings(){
-  cfg.apiKey=document.getElementById('cfgKey').value;
-  cfg.mode=document.getElementById('cfgMode').value;
-  if(isElectron)await window.electronAPI.saveConfig(cfg);
-  else AppStorage.save(cfg);
-  closeModal('modSettings');nativeAlert('저장되었습니다.');
-}
 async function saveEMR(){
   cfg.emrUrl=document.getElementById('cfgEmrUrl').value;
   cfg.emrToken=document.getElementById('cfgEmrToken').value;
@@ -681,14 +595,13 @@ async function testEMR(){
 if(isElectron){
   window.electronAPI.onMenuExport(()=>doExport());
   window.electronAPI.onMenuNew(()=>doReset());
-  window.electronAPI.onMenuSettings(()=>openSettings());
   window.electronAPI.onMenuEMRSettings(()=>openEMR());
 }
 
 // ══ 초기화 ═══════════════════════════════════════════════════════════════════
 async function init(){
   if(isElectron){const sv=await window.electronAPI.loadConfig();if(sv)cfg={...cfg,...sv};}
-  else{const sv=AppStorage.load();if(sv)cfg={...cfg,...sv};}
+  else{const sv=AppStorage.load();if(sv)cfg={emrUrl:sv.emrUrl||'',emrToken:sv.emrToken||''};}
   render();
 }
 init();
