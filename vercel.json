@@ -1,3 +1,8 @@
 {
-  "outputDirectory": "app/src/main/assets/www"
+  "outputDirectory": "app/src/main/assets/www",
+  "functions": {
+    "api/claude.js": {
+      "includeFiles": "data/**"
+    }
+  }
 }
